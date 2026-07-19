@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dig World — بیل مکانیکی</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c98a2b">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#87CEEB; font-family: -apple-system, 'Segoe UI', Tahoma, sans-serif; }
+  #app { position:relative; width:100vw; height:100vh; }
+  canvas { display:block; touch-action:none; }
+
+  #hotbar {
+    position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+    display:flex; gap:6px; z-index:20; background:rgba(0,0,0,0.35);
+    padding:6px; border-radius:10px;
+  }
+  .slot {
+    width:46px; height:46px; border-radius:6px; position:relative;
+    border:2px solid rgba(255,255,255,0.4); display:flex; align-items:flex-end;
+    justify-content:flex-end; cursor:pointer;
+  }
+  .slot.active { border-color:#fff; box-shadow:0 0 8px rgba(255,255,255,0.8); }
+  .slot span {
+    font-size:10px; color:#fff; background:rgba(0,0,0,0.5); border-radius:4px;
+    padding:0 3px; margin:2px;
+  }
+
+  #startOverlay {
+    position:absolute; inset:0; background:rgba(10,20,10,0.9); color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:200; text-align:center; padding:24px; gap:10px;
+  }
+  #startOverlay h1 { font-size:24px; letter-spacing:1px; }
+  #startOverlay p { font-size:14px; line-height:1.8; opacity:0.9; max-width:380px; }
+  #startBtn {
+    margin-top:14px; padding:12px 28px; font-size:16px; border:none; border-radius:8px;
+    background:#c98a2b; color:#fff; font-weight:bold; cursor:pointer;
+  }
+
+  #touchControls { position:absolute; inset:0; z-index:15; pointer-events:none; display:none; }
+  #joyBase {
+    position:absolute; left:24px; bottom:100px; width:110px; height:110px;
+    border-radius:50%; background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.35);
+    pointer-events:auto;
+  }
+  #joyKnob {
+    position:absolute; left:35px; top:35px; width:40px; height:40px; border-radius:50%;
+    background:rgba(255,255,255,0.55);
+  }
+  .actionBtn {
+    position:absolute; width:62px; height:62px; border-radius:50%; pointer-events:auto;
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+    background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5); color:#fff;
+  }
+  #digBtn { right:24px; bottom:170px; }
+  #placeBtn { right:100px; bottom:110px; }
+
+  #gearBtn {
+    position:absolute; top:12px; right:12px; z-index:30; width:42px; height:42px;
+    border-radius:50%; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5);
+    color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+
+  #hint {
+    position:absolute; top:12px; left:12px; z-index:20; color:#fff; font-size:12px;
+    background:rgba(0,0,0,0.35); padding:6px 12px; border-radius:6px; max-width:60vw;
+  }
+
+  .modal {
+    position:absolute; inset:0; background:rgba(0,0,0,0.6); z-index:100;
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal.show { display:flex; }
+  .modalBox {
+    background:#1c1f26; color:#fff; border-radius:12px; padding:20px; width:100%; max-width:340px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .modalBox h2 { font-size:17px; margin-bottom:4px; }
+  .modalBox input {
+    padding:10px; border-radius:6px; border:1px solid #444; background:#111; color:#fff; font-size:14px;
+  }
+  .modalBox button {
+    padding:10px; border-radius:6px; border:none; background:#c98a2b; color:#fff; font-weight:bold;
+    font-size:14px; cursor:pointer;
+  }
+  .modalBox button.secondary { background:#444; }
+  .modalBox .msg { font-size:12px; min-height:16px; }
+  .modalBox .msg.err { color:#ff6b6b; }
+  .modalBox .msg.ok { color:#7ee787; }
+  .row { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+  .divider { height:1px; background:#333; margin:6px 0; }
+  .closeX { align-self:flex-end; color:#aaa; font-size:13px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="startOverlay">
+    <h1>🚜 Dig World</h1>
+    <p>یه بازی رانندگی و حفاری با بیل‌مکانیکی — طراحی و کد اورجینال.<br><br>
+    دسکتاپ: WASD/جهت‌نما حرکت ماشین، Space = حفاری، F = گذاشتن بلوک.<br>
+    موبایل: جوی‌استیک چپ برای رانندگی، دکمه‌های ⛏️ حفاری و 🧱 گذاشتن.<br>
+    آیکون ⚙️ بالا سمت راست پنل ویرایش با رمز عبوره.</p>
+    <button id="startBtn">شروع بازی</button>
+  </div>
+
+  <div id="hint">در حال بارگذاری دنیا...</div>
+  <div id="hotbar"></div>
+  <div id="gearBtn">⚙️</div>
+
+  <div id="touchControls">
+    <div id="joyBase"><div id="joyKnob"></div></div>
+    <div id="digBtn" class="actionBtn">⛏️</div>
+    <div id="placeBtn" class="actionBtn">🧱</div>
+  </div>
+
+  <div id="pwModal" class="modal">
+    <div class="modalBox">
+      <div class="closeX" id="pwClose">✕ بستن</div>
+      <h2>🔒 پنل ویرایش قفل است</h2>
+      <input id="pwInput" type="password" placeholder="رمز عبور را وارد کنید" />
+      <button id="pwSubmit">ورود</button>
+      <div class="msg err" id="pwMsg"></div>
+    </div>
+  </div>
+
+  <div id="editorModal" class="modal">
+    <div class="modalBox">
+      <div class="closeX" id="editorClose">✕ بستن (قفل کردن)</div>
+      <h2>⚙️ پنل ویرایش</h2>
+      <div class="row"><span>بلوک نامحدود</span><input type="checkbox" id="unlimitedToggle"></div>
+      <div class="row"><span>سرعت ماشین</span>
+        <input type="range" id="speedSlider" min="0.5" max="2.5" step="0.1">
+      </div>
+      <div class="divider"></div>
+      <h2 style="font-size:14px;">تغییر رمز عبور</h2>
+      <input id="oldPw" type="password" placeholder="رمز فعلی">
+      <input id="newPw" type="password" placeholder="رمز جدید">
+      <button id="changePwBtn" class="secondary">تغییر رمز</button>
+      <div class="msg" id="editorMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  // ---------- Setup ----------
+  const app = document.getElementById('app');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87CEEB);
+  scene.fog = new THREE.Fog(0x87CEEB, 26, 55);
+
+  const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 200);
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  app.insertBefore(renderer.domElement, app.firstChild);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 0.8);
+  sun.position.set(30,50,20);
+  scene.add(sun);
+
+  // ---------- Block types ----------
+  const BLOCK_TYPES = [
+    { name:'چمن',  key:'grass', color:0x5ea83f },
+    { name:'خاک',  key:'dirt',  color:0x8b5a2b },
+    { name:'سنگ',  key:'stone', color:0x8a8a8a },
+    { name:'شن',   key:'sand',  color:0xdbc98b },
+    { name:'چوب',  key:'wood',  color:0x6b4423 },
+  ];
+  const materials = {};
+  BLOCK_TYPES.forEach(t => materials[t.key] = new THREE.MeshLambertMaterial({ color:t.color }));
+  const bedrockMat = new THREE.MeshLambertMaterial({ color:0x333333 });
+  const boxGeo = new THREE.BoxGeometry(1,1,1);
+
+  // ---------- Terrain ----------
+  function hash(x,z){ const s=Math.sin(x*127.1+z*311.7)*43758.5453123; return s-Math.floor(s); }
+  function smoothNoise(x,z){
+    const xi=Math.floor(x), zi=Math.floor(z), xf=x-xi, zf=z-zi;
+    const h00=hash(xi,zi), h10=hash(xi+1,zi), h01=hash(xi,zi+1), h11=hash(xi+1,zi+1);
+    const u=xf*xf*(3-2*xf), v=zf*zf*(3-2*zf);
+    return (h00*(1-u)+h10*u)*(1-v) + (h01*(1-u)+h11*u)*v;
+  }
+  function terrainHeight(x,z){
+    const n = smoothNoise(x*0.08,z*0.08)*0.7 + smoothNoise(x*0.2+50,z*0.2+50)*0.3;
+    return Math.max(1, Math.min(6, Math.floor(2 + n*5)));
+  }
+
+  const WORLD_MIN=-13, WORLD_MAX=12;
+  const blocks = new Map();
+  const meshes = new Map();
+  const heightMap = new Map(); // "x,z" -> top y
+  const worldGroup = new THREE.Group();
+  scene.add(worldGroup);
+  function key(x,y,z){ return x+','+y+','+z; }
+  function ckey(x,z){ return x+','+z; }
+
+  function addBlock(x,y,z,typeKey){
+    const k = key(x,y,z);
+    if (blocks.has(k)) return;
+    const mesh = new THREE.Mesh(boxGeo, y===0 ? bedrockMat : materials[typeKey]);
+    mesh.position.set(x+0.5,y+0.5,z+0.5);
+    mesh.userData = { x,y,z,typeKey, bedrock:(y===0) };
+    worldGroup.add(mesh);
+    blocks.set(k, typeKey);
+    meshes.set(k, mesh);
+    const ck = ckey(x,z);
+    if (!heightMap.has(ck) || y > heightMap.get(ck)) heightMap.set(ck, y);
+  }
+  function removeBlock(x,y,z){
+    const k = key(x,y,z);
+    if (!blocks.has(k)) return false;
+    if (y === 0) return false; // bedrock indestructible
+    const mesh = meshes.get(k);
+    if (mesh) { worldGroup.remove(mesh); meshes.delete(k); }
+    blocks.delete(k);
+    const ck = ckey(x,z);
+    if (heightMap.get(ck) === y) {
+      let ny = y-1;
+      while (ny >= 0 && !blocks.has(key(x,ny,z))) ny--;
+      heightMap.set(ck, Math.max(ny,0));
+    }
+    return true;
+  }
+  function topY(x,z){ const v = heightMap.get(ckey(x,z)); return v===undefined ? 0 : v; }
+
+  for (let x=WORLD_MIN;x<=WORLD_MAX;x++){
+    for (let z=WORLD_MIN;z<=WORLD_MAX;z++){
+      const h = terrainHeight(x,z);
+      for (let y=0;y<=h;y++){
+        let t;
+        if (y===0) t='stone';
+        else if (y===h) t=(h<=2)?'sand':'grass';
+        else if (y>=h-1) t='dirt';
+        else t='stone';
+        addBlock(x,y,z,t);
+      }
+    }
+  }
+
+  // ---------- Vehicle (excavator) ----------
+  const vehicleGroup = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color:0xd97b1f });
+  const cabMat = new THREE.MeshLambertMaterial({ color:0xf2c14e });
+  const wheelMat = new THREE.MeshLambertMaterial({ color:0x222222 });
+  const armMat = new THREE.MeshLambertMaterial({ color:0xc46a12 });
+
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,2.4), bodyMat);
+  chassis.position.y = 0.55;
+  vehicleGroup.add(chassis);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(1.2,0.8,1.1), cabMat);
+  cab.position.set(0,1.15,-0.3);
+  vehicleGroup.add(cab);
+  const wheelPositions = [[-0.85,0.3,0.9],[0.85,0.3,0.9],[-0.85,0.3,-0.9],[0.85,0.3,-0.9]];
+  wheelPositions.forEach(p=>{
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,0.3,12), wheelMat);
+    wheel.rotation.z = Math.PI/2;
+    wheel.position.set(p[0],p[1],p[2]);
+    vehicleGroup.add(wheel);
+  });
+  // digging arm (cosmetic)
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.25,0.25,1.4), armMat);
+  arm.position.set(0,0.9,1.6);
+  vehicleGroup.add(arm);
+  const bucket = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.4,0.5), armMat);
+  bucket.position.set(0,0.55,2.3);
+  vehicleGroup.add(bucket);
+
+  scene.add(vehicleGroup);
+
+  const vehicle = {
+    x:0, z:0, y:0, heading:0, speed:0,
+    maxSpeed: 4.2,
+  };
+  vehicle.y = topY(Math.round(vehicle.x), Math.round(vehicle.z)) + 1;
+
+  // ---------- Inventory / hotbar ----------
+  const inventory = { grass:20, dirt:20, stone:20, sand:20, wood:20 };
+  let selectedIndex = 0;
+  let unlimited = false;
+  const hotbarEl = document.getElementById('hotbar');
+  function renderHotbar(){
+    hotbarEl.innerHTML = '';
+    BLOCK_TYPES.forEach((t,i)=>{
+      const el = document.createElement('div');
+      el.className = 'slot' + (i===selectedIndex ? ' active' : '');
+      el.style.background = '#' + t.color.toString(16).padStart(6,'0');
+      const span = document.createElement('span');
+      span.textContent = unlimited ? '∞' : inventory[t.key];
+      el.appendChild(span);
+      el.addEventListener('pointerdown', e=>{ e.stopPropagation(); selectedIndex=i; renderHotbar(); });
+      hotbarEl.appendChild(el);
+    });
+  }
+  renderHotbar();
+
+  // ---------- Dig / Place ----------
+  function frontColumn(dist){
+    const fx = Math.round(vehicle.x + Math.sin(vehicle.heading)*dist);
+    const fz = Math.round(vehicle.z + Math.cos(vehicle.heading)*dist);
+    return {fx,fz};
+  }
+  function animateArm(){
+    let t = 0;
+    const iv = setInterval(()=>{
+      t += 0.15;
+      arm.rotation.x = Math.sin(t*Math.PI)*0.4;
+      if (t>=1){ clearInterval(iv); arm.rotation.x = 0; }
+    }, 30);
+  }
+  function doDig(){
+    const {fx,fz} = frontColumn(1.6);
+    const y = topY(fx,fz);
+    if (y <= 0) return;
+    const tKey = blocks.get(key(fx,y,fz));
+    if (removeBlock(fx,y,fz)) {
+      if (tKey) inventory[tKey] = (inventory[tKey]||0) + 1;
+      renderHotbar();
+      animateArm();
+    }
+  }
+  function doPlace(){
+    const t = BLOCK_TYPES[selectedIndex];
+    if (!unlimited && inventory[t.key] <= 0) return;
+    const {fx,fz} = frontColumn(1.6);
+    const y = topY(fx,fz) + 1;
+    if (blocks.has(key(fx,y,fz))) return;
+    addBlock(fx,y,fz,t.key);
+    if (!unlimited) inventory[t.key]--;
+    renderHotbar();
+    animateArm();
+  }
+
+  // ---------- Input ----------
+  const keys = {};
+  document.addEventListener('keydown', e=>{
+    keys[e.code]=true;
+    if (e.code==='Space'){ e.preventDefault(); doDig(); }
+    if (e.code==='KeyF'){ doPlace(); }
+    if (e.code>='Digit1' && e.code<='Digit5'){ selectedIndex = parseInt(e.code.slice(-1),10)-1; renderHotbar(); }
+  });
+  document.addEventListener('keyup', e=> keys[e.code]=false);
+
+  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints>0;
+  const startOverlay = document.getElementById('startOverlay');
+  const hint = document.getElementById('hint');
+  document.getElementById('startBtn').addEventListener('click', ()=>{
+    startOverlay.style.display='none';
+    if (isTouch) document.getElementById('touchControls').style.display='block';
+    hint.textContent = isTouch ? 'جوی‌استیک: رانندگی | ⛏️ حفاری | 🧱 گذاشتن' : 'WASD رانندگی | Space حفاری | F گذاشتن';
+    setTimeout(()=>{ hint.style.opacity='0'; hint.style.transition='opacity 1s'; }, 4000);
+  });
+
+  const joyBase = document.getElementById('joyBase');
+  const joyKnob = document.getElementById('joyKnob');
+  let joyTouchId=null, joyVec={x:0,y:0};
+  joyBase.addEventListener('touchstart', e=>{ e.preventDefault(); joyTouchId=e.changedTouches[0].identifier; updateJoy(e.changedTouches[0]); }, {passive:false});
+  joyBase.addEventListener('touchmove', e=>{ e.preventDefault(); for(const t of e.changedTouches) if(t.identifier===joyTouchId) updateJoy(t); }, {passive:false});
+  joyBase.addEventListener('touchend', e=>{ for(const t of e.changedTouches) if(t.identifier===joyTouchId){ joyTouchId=null; joyVec={x:0,y:0}; joyKnob.style.left='35px'; joyKnob.style.top='35px'; } });
+  function updateJoy(t){
+    const rect = joyBase.getBoundingClientRect();
+    const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+    let dx=t.clientX-cx, dy=t.clientY-cy;
+    const max=rect.width/2;
+    const dist=Math.min(Math.hypot(dx,dy),max);
+    const ang=Math.atan2(dy,dx);
+    dx=Math.cos(ang)*dist; dy=Math.sin(ang)*dist;
+    joyVec.x=dx/max; joyVec.y=dy/max;
+    joyKnob.style.left=(35+dx*0.6)+'px'; joyKnob.style.top=(35+dy*0.6)+'px';
+  }
+  document.getElementById('digBtn').addEventListener('touchstart', e=>{ e.preventDefault(); doDig(); }, {passive:false});
+  document.getElementById('placeBtn').addEventListener('touchstart', e=>{ e.preventDefault(); doPlace(); }, {passive:false});
+
+  // ---------- Password / editor panel ----------
+  let currentPassword = "Admin13";
+  const gearBtn = document.getElementById('gearBtn');
+  const pwModal = document.getElementById('pwModal');
+  const pwInput = document.getElementById('pwInput');
+  const pwSubmit = document.getElementById('pwSubmit');
+  const pwMsg = document.getElementById('pwMsg');
+  const pwClose = document.getElementById('pwClose');
+  const editorModal = document.getElementById('editorModal');
+  const editorClose = document.getElementById('editorClose');
+  const unlimitedToggle = document.getElementById('unlimitedToggle');
+  const speedSlider = document.getElementById('speedSlider');
+  const oldPwInput = document.getElementById('oldPw');
+  const newPwInput = document.getElementById('newPw');
+  const changePwBtn = document.getElementById('changePwBtn');
+  const editorMsg = document.getElementById('editorMsg');
+
+  gearBtn.addEventListener('click', ()=>{
+    pwInput.value=''; pwMsg.textContent='';
+    pwModal.classList.add('show');
+  });
+  pwClose.addEventListener('click', ()=> pwModal.classList.remove('show'));
+  pwSubmit.addEventListener('click', ()=>{
+    if (pwInput.value === currentPassword) {
+      pwModal.classList.remove('show');
+      editorMsg.textContent=''; editorMsg.className='msg';
+      unlimitedToggle.checked = unlimited;
+      speedSlider.value = vehicle.maxSpeed;
+      editorModal.classList.add('show');
+    } else {
+      pwMsg.textContent = 'رمز اشتباه است';
+    }
+  });
+  editorClose.addEventListener('click', ()=> editorModal.classList.remove('show'));
+  unlimitedToggle.addEventListener('change', ()=>{ unlimited = unlimitedToggle.checked; renderHotbar(); });
+  speedSlider.addEventListener('input', ()=>{ vehicle.maxSpeed = parseFloat(speedSlider.value); });
+  changePwBtn.addEventListener('click', ()=>{
+    if (oldPwInput.value !== currentPassword) {
+      editorMsg.textContent = 'رمز فعلی اشتباه است'; editorMsg.className='msg err'; return;
+    }
+    if (!newPwInput.value || newPwInput.value.length < 2) {
+      editorMsg.textContent = 'رمز جدید خیلی کوتاه است'; editorMsg.className='msg err'; return;
+    }
+    currentPassword = newPwInput.value;
+    oldPwInput.value=''; newPwInput.value='';
+    editorMsg.textContent = 'رمز با موفقیت تغییر کرد'; editorMsg.className='msg ok';
+  });
+
+  // ---------- Camera follow ----------
+  const camOffset = new THREE.Vector3();
+  const camTarget = new THREE.Vector3();
+
+  // ---------- Main loop ----------
+  const clock = new THREE.Clock();
+  const TURN_RATE = 2.2;
+
+  function update(dt){
+    let throttle = 0, steer = 0;
+    if (!isTouch) {
+      if (keys['KeyW']||keys['ArrowUp']) throttle += 1;
+      if (keys['KeyS']||keys['ArrowDown']) throttle -= 1;
+      if (keys['KeyA']||keys['ArrowLeft']) steer -= 1;
+      if (keys['KeyD']||keys['ArrowRight']) steer += 1;
+    } else {
+      throttle = -joyVec.y;
+      steer = joyVec.x;
+    }
+
+    vehicle.speed += throttle * 6 * dt;
+    vehicle.speed *= 0.94; // friction
+    vehicle.speed = Math.max(-vehicle.maxSpeed*0.5, Math.min(vehicle.maxSpeed, vehicle.speed));
+
+    if (Math.abs(vehicle.speed) > 0.05) {
+      vehicle.heading += steer * TURN_RATE * dt * Math.sign(vehicle.speed);
+    }
+
+    const nx = vehicle.x + Math.sin(vehicle.heading) * vehicle.speed * dt;
+    const nz = vehicle.z + Math.cos(vehicle.heading) * vehicle.speed * dt;
+    vehicle.x = Math.max(WORLD_MIN+1, Math.min(WORLD_MAX-1, nx));
+    vehicle.z = Math.max(WORLD_MIN+1, Math.min(WORLD_MAX-1, nz));
+
+    const groundY = topY(Math.round(vehicle.x), Math.round(vehicle.z)) + 1;
+    vehicle.y += (groundY - vehicle.y) * Math.min(1, dt*8);
+
+    vehicleGroup.position.set(vehicle.x, vehicle.y, vehicle.z);
+    vehicleGroup.rotation.y = vehicle.heading;
+
+    // wheel spin
+    wheelPositions.forEach((p,i)=>{
+      vehicleGroup.children[1+i].rotation.x += vehicle.speed*dt*2;
+    });
+
+    // camera third-person follow
+    camOffset.set(Math.sin(vehicle.heading)*-6, 3.6, Math.cos(vehicle.heading)*-6);
+    const desiredPos = new THREE.Vector3(vehicle.x,vehicle.y,vehicle.z).add(camOffset);
+    camera.position.lerp(desiredPos, Math.min(1, dt*4));
+    camTarget.set(vehicle.x, vehicle.y+0.8, vehicle.z);
+    camera.lookAt(camTarget);
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    update(dt);
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+})();
+</script>
+</body>
+</html>
