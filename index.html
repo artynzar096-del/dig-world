@@ -14,19 +14,31 @@
   #app { position:relative; width:100vw; height:100vh; }
   canvas { display:block; touch-action:none; }
 
+  #crosshair {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:18px; height:18px; pointer-events:none; z-index:10; display:none;
+  }
+  #crosshair.show { display:block; }
+  #crosshair::before, #crosshair::after {
+    content:""; position:absolute; background:rgba(255,255,255,0.85);
+    box-shadow:0 0 2px rgba(0,0,0,0.6);
+  }
+  #crosshair::before { top:8px; left:0; width:18px; height:2px; }
+  #crosshair::after { left:8px; top:0; width:2px; height:18px; }
+
   #hotbar {
     position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
-    display:flex; gap:6px; z-index:20; background:rgba(0,0,0,0.35);
-    padding:6px; border-radius:10px;
+    display:flex; gap:5px; z-index:20; background:rgba(0,0,0,0.35);
+    padding:6px; border-radius:10px; max-width:96vw; overflow-x:auto;
   }
   .slot {
-    width:46px; height:46px; border-radius:6px; position:relative;
+    min-width:40px; width:40px; height:40px; border-radius:6px; position:relative; flex-shrink:0;
     border:2px solid rgba(255,255,255,0.4); display:flex; align-items:flex-end;
     justify-content:flex-end; cursor:pointer;
   }
   .slot.active { border-color:#fff; box-shadow:0 0 8px rgba(255,255,255,0.8); }
   .slot span {
-    font-size:10px; color:#fff; background:rgba(0,0,0,0.5); border-radius:4px;
+    font-size:9px; color:#fff; background:rgba(0,0,0,0.5); border-radius:4px;
     padding:0 3px; margin:2px;
   }
 
@@ -36,7 +48,7 @@
     z-index:200; text-align:center; padding:24px; gap:10px;
   }
   #startOverlay h1 { font-size:24px; letter-spacing:1px; }
-  #startOverlay p { font-size:14px; line-height:1.8; opacity:0.9; max-width:380px; }
+  #startOverlay p { font-size:13px; line-height:1.8; opacity:0.9; max-width:380px; }
   #startBtn {
     margin-top:14px; padding:12px 28px; font-size:16px; border:none; border-radius:8px;
     background:#c98a2b; color:#fff; font-weight:bold; cursor:pointer;
@@ -52,23 +64,46 @@
     position:absolute; left:35px; top:35px; width:40px; height:40px; border-radius:50%;
     background:rgba(255,255,255,0.55);
   }
+  #lookZone { position:absolute; right:0; top:0; width:60%; height:65%; pointer-events:none; }
+  #lookZone.active { pointer-events:auto; }
   .actionBtn {
-    position:absolute; width:62px; height:62px; border-radius:50%; pointer-events:auto;
-    display:flex; align-items:center; justify-content:center; font-size:24px;
+    position:absolute; width:58px; height:58px; border-radius:50%; pointer-events:auto;
+    display:flex; align-items:center; justify-content:center; font-size:22px;
     background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5); color:#fff;
   }
   #digBtn { right:24px; bottom:170px; }
-  #placeBtn { right:100px; bottom:110px; }
-
-  #gearBtn {
-    position:absolute; top:12px; right:12px; z-index:30; width:42px; height:42px;
-    border-radius:50%; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5);
-    color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  #placeBtn { right:96px; bottom:110px; }
+  #jumpBtn { right:24px; bottom:100px; background:rgba(94,168,63,0.55); display:none; }
+  #enterBtn {
+    position:absolute; left:50%; top:16px; transform:translateX(-50%); pointer-events:auto;
+    padding:8px 16px; border-radius:20px; background:rgba(0,0,0,0.5); color:#fff;
+    border:2px solid rgba(255,255,255,0.5); font-size:13px; z-index:25;
   }
 
+  #gearBtn {
+    position:absolute; top:12px; right:12px; z-index:30; width:40px; height:40px;
+    border-radius:50%; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5);
+    color:#fff; font-size:19px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  #invBtn {
+    position:absolute; top:12px; right:60px; z-index:30; width:40px; height:40px;
+    border-radius:50%; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5);
+    color:#fff; font-size:19px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  #invModal .modalBox { max-width:360px; }
+  #invGrid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .invSlot {
+    aspect-ratio:1; border-radius:8px; border:2px solid rgba(255,255,255,0.3);
+    display:flex; align-items:flex-end; justify-content:flex-end; cursor:pointer; position:relative;
+  }
+  .invSlot span {
+    font-size:11px; color:#fff; background:rgba(0,0,0,0.5); border-radius:4px; padding:0 3px; margin:3px;
+  }
+  .invHint { font-size:12px; opacity:0.8; }
+
   #hint {
-    position:absolute; top:12px; left:12px; z-index:20; color:#fff; font-size:12px;
-    background:rgba(0,0,0,0.35); padding:6px 12px; border-radius:6px; max-width:60vw;
+    position:absolute; top:12px; left:12px; z-index:20; color:#fff; font-size:11px;
+    background:rgba(0,0,0,0.35); padding:6px 10px; border-radius:6px; max-width:55vw;
   }
 
   .modal {
@@ -101,21 +136,25 @@
 <div id="app">
   <div id="startOverlay">
     <h1>🚜 Dig World</h1>
-    <p>یه بازی رانندگی و حفاری با بیل‌مکانیکی — طراحی و کد اورجینال.<br><br>
-    دسکتاپ: WASD/جهت‌نما حرکت ماشین، Space = حفاری، F = گذاشتن بلوک.<br>
-    موبایل: جوی‌استیک چپ برای رانندگی، دکمه‌های ⛏️ حفاری و 🧱 گذاشتن.<br>
-    آیکون ⚙️ بالا سمت راست پنل ویرایش با رمز عبوره.</p>
+    <p>یه بازی رانندگی، حفاری و پیاده‌روی — طراحی و کد اورجینال، دنیای بزرگ.<br><br>
+    دسکتاپ: WASD حرکت، Space حفاری/پرش، F گذاشتن، E سوار/پیاده شدن، ماوس نگاه (پیاده).<br>
+    موبایل: جوی‌استیک حرکت، کشیدن سمت راست = نگاه (پیاده)، دکمه‌های ⛏️🧱🚪.</p>
     <button id="startBtn">شروع بازی</button>
   </div>
 
   <div id="hint">در حال بارگذاری دنیا...</div>
+  <div id="crosshair"></div>
   <div id="hotbar"></div>
   <div id="gearBtn">⚙️</div>
+  <div id="invBtn">🎒</div>
+  <div id="enterBtn">🚪 سوار شو (E)</div>
 
   <div id="touchControls">
+    <div id="lookZone"></div>
     <div id="joyBase"><div id="joyKnob"></div></div>
     <div id="digBtn" class="actionBtn">⛏️</div>
     <div id="placeBtn" class="actionBtn">🧱</div>
+    <div id="jumpBtn" class="actionBtn">⬆️</div>
   </div>
 
   <div id="pwModal" class="modal">
@@ -125,6 +164,15 @@
       <input id="pwInput" type="password" placeholder="رمز عبور را وارد کنید" />
       <button id="pwSubmit">ورود</button>
       <div class="msg err" id="pwMsg"></div>
+    </div>
+  </div>
+
+  <div id="invModal" class="modal">
+    <div class="modalBox">
+      <div class="closeX" id="invClose">✕ بستن</div>
+      <h2>🎒 اینونتوری</h2>
+      <div class="invHint">یه اسلات از هات‌بار پایین صفحه رو انتخاب کن، بعد یه بلاک از اینجا بزن تا توش قرار بگیره.</div>
+      <div id="invGrid"></div>
     </div>
   </div>
 
@@ -153,9 +201,9 @@
   const app = document.getElementById('app');
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87CEEB);
-  scene.fog = new THREE.Fog(0x87CEEB, 26, 55);
+  scene.fog = new THREE.Fog(0x87CEEB, 28, 62);
 
-  const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.1, 220);
   const renderer = new THREE.WebGLRenderer({ antialias:true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -167,10 +215,27 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-  const sun = new THREE.DirectionalLight(0xfff4e0, 0.8);
+  scene.add(new THREE.HemisphereLight(0xbde0ff, 0x4a3b2a, 0.75));
+  const sun = new THREE.DirectionalLight(0xfff2d8, 0.95);
   sun.position.set(30,50,20);
   scene.add(sun);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.18));
+
+  function makeSkyTexture(){
+    const c = document.createElement('canvas'); c.width = 2; c.height = 128;
+    const ctx = c.getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,0,128);
+    grad.addColorStop(0, '#3f7fce');
+    grad.addColorStop(0.55, '#87CEEB');
+    grad.addColorStop(1, '#e8f6fc');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,2,128);
+    return new THREE.CanvasTexture(c);
+  }
+  const skyMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(160,16,16),
+    new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog:false })
+  );
+  scene.add(skyMesh);
 
   // ---------- Block types ----------
   const BLOCK_TYPES = [
@@ -179,10 +244,85 @@
     { name:'سنگ',  key:'stone', color:0x8a8a8a },
     { name:'شن',   key:'sand',  color:0xdbc98b },
     { name:'چوب',  key:'wood',  color:0x6b4423 },
+    { name:'برگ',  key:'leaves',color:0x3e7d32 },
+    { name:'آجر',  key:'brick', color:0xb33f24 },
+    { name:'شیشه', key:'glass', color:0xbfe3f0 },
   ];
-  const materials = {};
-  BLOCK_TYPES.forEach(t => materials[t.key] = new THREE.MeshLambertMaterial({ color:t.color }));
-  const bedrockMat = new THREE.MeshLambertMaterial({ color:0x333333 });
+
+  function shade(hex, amt){
+    let r=(hex>>16)&255, g=(hex>>8)&255, b=hex&255;
+    r=Math.min(255,Math.max(0,r+amt)); g=Math.min(255,Math.max(0,g+amt)); b=Math.min(255,Math.max(0,b+amt));
+    return `rgb(${r|0},${g|0},${b|0})`;
+  }
+  function baseCanvas(){ const c=document.createElement('canvas'); c.width=16; c.height=16; return c; }
+  function finish(c){ const tex=new THREE.CanvasTexture(c); tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.NearestFilter; return tex; }
+  function makeSpeckle(hex, speckles=55, variance=20){
+    const c=baseCanvas(), ctx=c.getContext('2d');
+    ctx.fillStyle=shade(hex,0); ctx.fillRect(0,0,16,16);
+    for(let i=0;i<speckles;i++){ const x=(Math.random()*16)|0, y=(Math.random()*16)|0; ctx.fillStyle=shade(hex,(Math.random()-0.5)*variance*2); ctx.fillRect(x,y,1,1); }
+    return finish(c);
+  }
+  function makeGrassSide(dirtHex, grassHex){
+    const c=baseCanvas(), ctx=c.getContext('2d');
+    ctx.fillStyle=shade(dirtHex,0); ctx.fillRect(0,0,16,16);
+    for(let i=0;i<40;i++){ const x=(Math.random()*16)|0, y=4+((Math.random()*12)|0); ctx.fillStyle=shade(dirtHex,(Math.random()-0.5)*22); ctx.fillRect(x,y,1,1); }
+    ctx.fillStyle=shade(grassHex,0); ctx.fillRect(0,0,16,4);
+    for(let i=0;i<18;i++){ const x=(Math.random()*16)|0, y=(Math.random()*4)|0; ctx.fillStyle=shade(grassHex,(Math.random()-0.5)*22); ctx.fillRect(x,y,1,1); }
+    for(let x=0;x<16;x+=3){ if (Math.random()>0.5) { ctx.fillStyle=shade(grassHex,-16); ctx.fillRect(x,4,1,2); } }
+    return finish(c);
+  }
+  function makeWoodTexture(hex){
+    const c=baseCanvas(), ctx=c.getContext('2d');
+    ctx.fillStyle=shade(hex,0); ctx.fillRect(0,0,16,16);
+    for(let x=0;x<16;x++){
+      if (x%3===0) { ctx.fillStyle=shade(hex,-20); ctx.fillRect(x,0,1,16); }
+      else if (x%3===1){ ctx.fillStyle=shade(hex,10); ctx.fillRect(x,0,1,16); }
+    }
+    return finish(c);
+  }
+  function makeBrickTexture(hex){
+    const c=baseCanvas(), ctx=c.getContext('2d');
+    ctx.fillStyle='#8f8f8f'; ctx.fillRect(0,0,16,16);
+    for(let row=0; row<4; row++){
+      const y=row*4, offset=(row%2===0)?0:4;
+      ctx.fillStyle=shade(hex,(Math.random()-0.5)*10);
+      for(let bx=-4; bx<20; bx+=8){ ctx.fillRect(bx+offset,y,7,3); }
+    }
+    return finish(c);
+  }
+
+  const texGrassTop = makeSpeckle(0x5ea83f,60,26);
+  const texGrassSide = makeGrassSide(0x8b5a2b,0x5ea83f);
+  const texDirt = makeSpeckle(0x8b5a2b,55,22);
+  const texStone = makeSpeckle(0x8a8a8a,55,18);
+  const texSand = makeSpeckle(0xdbc98b,45,16);
+  const texWood = makeWoodTexture(0x6b4423);
+  const texLeaves = makeSpeckle(0x3e7d32,70,30);
+  const texBrick = makeBrickTexture(0xb33f24);
+  const texGlass = makeSpeckle(0xbfe3f0,20,10);
+  const texBedrockTex = makeSpeckle(0x333333,50,20);
+
+  const matGrassTop = new THREE.MeshLambertMaterial({ map:texGrassTop });
+  const matGrassSide = new THREE.MeshLambertMaterial({ map:texGrassSide });
+  const matDirt = new THREE.MeshLambertMaterial({ map:texDirt });
+  const matStone = new THREE.MeshLambertMaterial({ map:texStone });
+  const matSand = new THREE.MeshLambertMaterial({ map:texSand });
+  const matWood = new THREE.MeshLambertMaterial({ map:texWood });
+  const matLeaves = new THREE.MeshLambertMaterial({ map:texLeaves });
+  const matBrick = new THREE.MeshLambertMaterial({ map:texBrick });
+  const matGlass = new THREE.MeshLambertMaterial({ map:texGlass, transparent:true, opacity:0.55 });
+
+  const blockMatDefs = {
+    grass: [matGrassSide,matGrassSide,matGrassTop,matDirt,matGrassSide,matGrassSide],
+    dirt: matDirt,
+    stone: matStone,
+    sand: matSand,
+    wood: matWood,
+    leaves: matLeaves,
+    brick: matBrick,
+    glass: matGlass,
+  };
+  const bedrockMat = new THREE.MeshLambertMaterial({ map:texBedrockTex });
   const boxGeo = new THREE.BoxGeometry(1,1,1);
 
   // ---------- Terrain ----------
@@ -194,14 +334,14 @@
     return (h00*(1-u)+h10*u)*(1-v) + (h01*(1-u)+h11*u)*v;
   }
   function terrainHeight(x,z){
-    const n = smoothNoise(x*0.08,z*0.08)*0.7 + smoothNoise(x*0.2+50,z*0.2+50)*0.3;
-    return Math.max(1, Math.min(6, Math.floor(2 + n*5)));
+    const n = smoothNoise(x*0.07,z*0.07)*0.6 + smoothNoise(x*0.16+50,z*0.16+50)*0.3 + smoothNoise(x*0.35+100,z*0.35+100)*0.1;
+    return Math.max(1, Math.min(7, Math.floor(2 + n*6)));
   }
 
-  const WORLD_MIN=-13, WORLD_MAX=12;
+  const WORLD_MIN=-24, WORLD_MAX=23;
   const blocks = new Map();
   const meshes = new Map();
-  const heightMap = new Map(); // "x,z" -> top y
+  const heightMap = new Map();
   const worldGroup = new THREE.Group();
   scene.add(worldGroup);
   function key(x,y,z){ return x+','+y+','+z; }
@@ -210,7 +350,8 @@
   function addBlock(x,y,z,typeKey){
     const k = key(x,y,z);
     if (blocks.has(k)) return;
-    const mesh = new THREE.Mesh(boxGeo, y===0 ? bedrockMat : materials[typeKey]);
+    const matArg = y===0 ? bedrockMat : blockMatDefs[typeKey];
+    const mesh = new THREE.Mesh(boxGeo, matArg);
     mesh.position.set(x+0.5,y+0.5,z+0.5);
     mesh.userData = { x,y,z,typeKey, bedrock:(y===0) };
     worldGroup.add(mesh);
@@ -222,7 +363,7 @@
   function removeBlock(x,y,z){
     const k = key(x,y,z);
     if (!blocks.has(k)) return false;
-    if (y === 0) return false; // bedrock indestructible
+    if (y === 0) return false;
     const mesh = meshes.get(k);
     if (mesh) { worldGroup.remove(mesh); meshes.delete(k); }
     blocks.delete(k);
@@ -235,6 +376,7 @@
     return true;
   }
   function topY(x,z){ const v = heightMap.get(ckey(x,z)); return v===undefined ? 0 : v; }
+  function getBlock(x,y,z){ return blocks.get(key(Math.floor(x),Math.floor(y),Math.floor(z))); }
 
   for (let x=WORLD_MIN;x<=WORLD_MAX;x++){
     for (let z=WORLD_MIN;z<=WORLD_MAX;z++){
@@ -246,6 +388,18 @@
         else if (y>=h-1) t='dirt';
         else t='stone';
         addBlock(x,y,z,t);
+      }
+    }
+  }
+  for (let x=WORLD_MIN+2; x<=WORLD_MAX-2; x++){
+    for (let z=WORLD_MIN+2; z<=WORLD_MAX-2; z++){
+      const h = terrainHeight(x,z);
+      if (h>2 && h<7 && hash(x*3.1,z*7.7) > 0.965) {
+        for (let ty=h+1; ty<=h+3; ty++) addBlock(x,ty,z,'wood');
+        for (let lx=-1; lx<=1; lx++)
+          for (let lz=-1; lz<=1; lz++)
+            addBlock(x+lx, h+4, z+lz, 'leaves');
+        addBlock(x,h+5,z,'leaves');
       }
     }
   }
@@ -270,48 +424,96 @@
     wheel.position.set(p[0],p[1],p[2]);
     vehicleGroup.add(wheel);
   });
-  // digging arm (cosmetic)
   const arm = new THREE.Mesh(new THREE.BoxGeometry(0.25,0.25,1.4), armMat);
   arm.position.set(0,0.9,1.6);
   vehicleGroup.add(arm);
   const bucket = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.4,0.5), armMat);
   bucket.position.set(0,0.55,2.3);
   vehicleGroup.add(bucket);
-
   scene.add(vehicleGroup);
 
-  const vehicle = {
-    x:0, z:0, y:0, heading:0, speed:0,
-    maxSpeed: 4.2,
-  };
+  const charGroup = new THREE.Group();
+  const skinMat = new THREE.MeshLambertMaterial({ color:0xE8B084 });
+  const shirtMat = new THREE.MeshLambertMaterial({ color:0x3a6ea5 });
+  const pantsMat = new THREE.MeshLambertMaterial({ color:0x394047 });
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.4,0.4), skinMat);
+  head.position.y = 1.5;
+  charGroup.add(head);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.6,0.25), shirtMat);
+  torso.position.y = 1.0;
+  charGroup.add(torso);
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.6,0.2), pantsMat);
+  legL.position.set(-0.12,0.4,0);
+  charGroup.add(legL);
+  const legR = legL.clone(); legR.position.x = 0.12; charGroup.add(legR);
+  charGroup.visible = false;
+  scene.add(charGroup);
+
+  const vehicle = { x:0, z:0, y:0, heading:0, speed:0, maxSpeed: 4.2 };
   vehicle.y = topY(Math.round(vehicle.x), Math.round(vehicle.z)) + 1;
 
-  // ---------- Inventory / hotbar ----------
-  const inventory = { grass:20, dirt:20, stone:20, sand:20, wood:20 };
+  const player = { x:0, y:0, z:0, yaw:0, pitch:0, vel:new THREE.Vector3(), onGround:false, height:1.7, eye:1.55, radius:0.3 };
+
+  let mode = 'vehicle';
+
+  const inventory = { grass:20, dirt:20, stone:20, sand:20, wood:20, leaves:20, brick:20, glass:20 };
+  const HOTBAR_SIZE = 5;
+  let hotbarSlots = BLOCK_TYPES.slice(0, HOTBAR_SIZE).map(t => t.key); // block key or null per slot
   let selectedIndex = 0;
   let unlimited = false;
   const hotbarEl = document.getElementById('hotbar');
+  function typeOf(k){ return BLOCK_TYPES.find(t=>t.key===k); }
   function renderHotbar(){
     hotbarEl.innerHTML = '';
-    BLOCK_TYPES.forEach((t,i)=>{
+    for (let i=0;i<HOTBAR_SIZE;i++){
+      const tk = hotbarSlots[i];
+      const t = tk ? typeOf(tk) : null;
       const el = document.createElement('div');
       el.className = 'slot' + (i===selectedIndex ? ' active' : '');
-      el.style.background = '#' + t.color.toString(16).padStart(6,'0');
+      el.style.background = t ? ('#' + t.color.toString(16).padStart(6,'0')) : 'rgba(255,255,255,0.08)';
       const span = document.createElement('span');
-      span.textContent = unlimited ? '∞' : inventory[t.key];
+      span.textContent = t ? (unlimited ? '∞' : (inventory[t.key]||0)) : '';
       el.appendChild(span);
       el.addEventListener('pointerdown', e=>{ e.stopPropagation(); selectedIndex=i; renderHotbar(); });
       hotbarEl.appendChild(el);
-    });
+    }
   }
   renderHotbar();
 
-  // ---------- Dig / Place ----------
-  function frontColumn(dist){
-    const fx = Math.round(vehicle.x + Math.sin(vehicle.heading)*dist);
-    const fz = Math.round(vehicle.z + Math.cos(vehicle.heading)*dist);
-    return {fx,fz};
+  const invBtn = document.getElementById('invBtn');
+  const invModal = document.getElementById('invModal');
+  const invClose = document.getElementById('invClose');
+  const invGrid = document.getElementById('invGrid');
+  function renderInvGrid(){
+    invGrid.innerHTML = '';
+    BLOCK_TYPES.forEach(t=>{
+      const el = document.createElement('div');
+      el.className = 'invSlot';
+      el.style.background = '#' + t.color.toString(16).padStart(6,'0');
+      const span = document.createElement('span');
+      span.textContent = unlimited ? '∞' : (inventory[t.key]||0);
+      el.appendChild(span);
+      el.addEventListener('click', ()=>{
+        hotbarSlots[selectedIndex] = t.key;
+        renderHotbar();
+        invModal.classList.remove('show');
+      });
+      invGrid.appendChild(el);
+    });
   }
+  invBtn.addEventListener('click', ()=>{ renderInvGrid(); invModal.classList.add('show'); });
+  invClose.addEventListener('click', ()=> invModal.classList.remove('show'));
+
+  const raycaster = new THREE.Raycaster();
+  raycaster.far = 6.5;
+  function castFromCamera(){
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    raycaster.set(camera.position, dir);
+    const hits = raycaster.intersectObjects(worldGroup.children, false);
+    return hits.length ? hits[0] : null;
+  }
+
   function animateArm(){
     let t = 0;
     const iv = setInterval(()=>{
@@ -320,48 +522,141 @@
       if (t>=1){ clearInterval(iv); arm.rotation.x = 0; }
     }, 30);
   }
+
+  function frontColumn(dist){
+    const fx = Math.round(vehicle.x + Math.sin(vehicle.heading)*dist);
+    const fz = Math.round(vehicle.z + Math.cos(vehicle.heading)*dist);
+    return {fx,fz};
+  }
+
   function doDig(){
-    const {fx,fz} = frontColumn(1.6);
-    const y = topY(fx,fz);
-    if (y <= 0) return;
-    const tKey = blocks.get(key(fx,y,fz));
-    if (removeBlock(fx,y,fz)) {
-      if (tKey) inventory[tKey] = (inventory[tKey]||0) + 1;
-      renderHotbar();
-      animateArm();
+    if (mode === 'vehicle') {
+      const {fx,fz} = frontColumn(1.6);
+      const y = topY(fx,fz);
+      if (y <= 0) return;
+      const tKey = blocks.get(key(fx,y,fz));
+      if (removeBlock(fx,y,fz)) { if (tKey) inventory[tKey]=(inventory[tKey]||0)+1; renderHotbar(); animateArm(); }
+    } else {
+      const hit = castFromCamera();
+      if (!hit) return;
+      const { x,y,z,typeKey } = hit.object.userData;
+      if (removeBlock(x,y,z)) { inventory[typeKey]=(inventory[typeKey]||0)+1; renderHotbar(); }
     }
   }
   function doPlace(){
-    const t = BLOCK_TYPES[selectedIndex];
+    const tk = hotbarSlots[selectedIndex];
+    if (!tk) return;
+    const t = typeOf(tk);
     if (!unlimited && inventory[t.key] <= 0) return;
-    const {fx,fz} = frontColumn(1.6);
-    const y = topY(fx,fz) + 1;
-    if (blocks.has(key(fx,y,fz))) return;
-    addBlock(fx,y,fz,t.key);
-    if (!unlimited) inventory[t.key]--;
-    renderHotbar();
-    animateArm();
+    if (mode === 'vehicle') {
+      const {fx,fz} = frontColumn(1.6);
+      const y = topY(fx,fz) + 1;
+      if (blocks.has(key(fx,y,fz))) return;
+      addBlock(fx,y,fz,t.key);
+      if (!unlimited) inventory[t.key]--;
+      renderHotbar(); animateArm();
+    } else {
+      const hit = castFromCamera();
+      if (!hit) return;
+      const n = hit.face.normal;
+      const bx = Math.floor(hit.object.position.x + n.x*0.5);
+      const by = Math.floor(hit.object.position.y + n.y*0.5);
+      const bz = Math.floor(hit.object.position.z + n.z*0.5);
+      const px = Math.floor(player.x), py = Math.floor(player.y), pz = Math.floor(player.z);
+      if (bx===px && bz===pz && (by===py||by===py+1||by===py-1)) return;
+      if (getBlock(bx,by,bz)) return;
+      addBlock(bx,by,bz,t.key);
+      if (!unlimited) inventory[t.key]--;
+      renderHotbar();
+    }
   }
 
-  // ---------- Input ----------
+  const enterBtn = document.getElementById('enterBtn');
+  const crosshair = document.getElementById('crosshair');
+  const jumpBtnEl = document.getElementById('jumpBtn');
+  const lookZoneEl = document.getElementById('lookZone');
+  let locked = false;
+  const canvas = renderer.domElement;
+
+  function updateModeUI(){
+    if (mode === 'walking') {
+      enterBtn.textContent = '🚪 سوار شو (E)';
+      crosshair.classList.add('show');
+      jumpBtnEl.style.display = 'flex';
+      lookZoneEl.classList.add('active');
+    } else {
+      enterBtn.textContent = '🚪 پیاده شو (E)';
+      crosshair.classList.remove('show');
+      jumpBtnEl.style.display = 'none';
+      lookZoneEl.classList.remove('active');
+    }
+    charGroup.visible = false;
+  }
+
+  function toggleMode(){
+    if (mode === 'vehicle') {
+      player.x = vehicle.x + Math.sin(vehicle.heading + Math.PI/2)*1.6;
+      player.z = vehicle.z + Math.cos(vehicle.heading + Math.PI/2)*1.6;
+      player.y = topY(Math.round(player.x),Math.round(player.z)) + 1;
+      player.yaw = vehicle.heading;
+      player.pitch = 0;
+      mode = 'walking';
+      vehicle.speed = 0;
+      if (!isTouch) canvas.requestPointerLock();
+    } else {
+      const dist = Math.hypot(player.x-vehicle.x, player.z-vehicle.z);
+      if (dist < 3.2) {
+        mode = 'vehicle';
+        if (!isTouch && document.exitPointerLock) document.exitPointerLock();
+      } else {
+        hint.textContent = 'برای سوار شدن باید نزدیک ماشین باشی';
+        hint.style.opacity = '1';
+        setTimeout(()=>{ hint.style.opacity='0'; }, 2000);
+        return;
+      }
+    }
+    updateModeUI();
+  }
+  enterBtn.addEventListener('click', toggleMode);
+  enterBtn.addEventListener('touchstart', e=>{ e.preventDefault(); toggleMode(); }, {passive:false});
+
   const keys = {};
+  const startOverlay = document.getElementById('startOverlay');
+  const hint = document.getElementById('hint');
+  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    startOverlay.style.display='none';
+    if (isTouch) document.getElementById('touchControls').style.display='block';
+    hint.textContent = isTouch ? 'جوی‌استیک حرکت | نگاه بکش سمت راست | ⛏️🧱🚪' : 'WASD حرکت | Space حفاری/پرش | F گذاشتن | E سوار/پیاده';
+    setTimeout(()=>{ hint.style.opacity='0'; hint.style.transition='opacity 1s'; }, 4500);
+    updateModeUI();
+  });
+
+  document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === canvas; });
+  canvas.addEventListener('click', () => { if (!isTouch && mode==='walking' && !locked) canvas.requestPointerLock(); });
+
   document.addEventListener('keydown', e=>{
     keys[e.code]=true;
-    if (e.code==='Space'){ e.preventDefault(); doDig(); }
+    if (e.code==='KeyE') toggleMode();
+    if (e.code==='Space'){ e.preventDefault(); if (mode==='walking'){ if (player.onGround){ player.vel.y = 8.2; player.onGround=false; } } else { doDig(); } }
     if (e.code==='KeyF'){ doPlace(); }
     if (e.code>='Digit1' && e.code<='Digit5'){ selectedIndex = parseInt(e.code.slice(-1),10)-1; renderHotbar(); }
   });
   document.addEventListener('keyup', e=> keys[e.code]=false);
 
-  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints>0;
-  const startOverlay = document.getElementById('startOverlay');
-  const hint = document.getElementById('hint');
-  document.getElementById('startBtn').addEventListener('click', ()=>{
-    startOverlay.style.display='none';
-    if (isTouch) document.getElementById('touchControls').style.display='block';
-    hint.textContent = isTouch ? 'جوی‌استیک: رانندگی | ⛏️ حفاری | 🧱 گذاشتن' : 'WASD رانندگی | Space حفاری | F گذاشتن';
-    setTimeout(()=>{ hint.style.opacity='0'; hint.style.transition='opacity 1s'; }, 4000);
+  document.addEventListener('mousemove', e=>{
+    if (!locked || mode!=='walking') return;
+    player.yaw -= e.movementX * 0.0022;
+    player.pitch -= e.movementY * 0.0022;
+    player.pitch = Math.max(-Math.PI/2+0.05, Math.min(Math.PI/2-0.05, player.pitch));
   });
+  canvas.addEventListener('mousedown', e=>{
+    if (mode!=='walking' || !locked) return;
+    if (e.button===0) doDig();
+    if (e.button===2) doPlace();
+  });
+  canvas.addEventListener('contextmenu', e=> e.preventDefault());
 
   const joyBase = document.getElementById('joyBase');
   const joyKnob = document.getElementById('joyKnob');
@@ -380,10 +675,32 @@
     joyVec.x=dx/max; joyVec.y=dy/max;
     joyKnob.style.left=(35+dx*0.6)+'px'; joyKnob.style.top=(35+dy*0.6)+'px';
   }
+
+  let lookTouchId=null, lastLook={x:0,y:0};
+  lookZoneEl.addEventListener('touchstart', e=>{
+    if (mode!=='walking') return;
+    e.preventDefault();
+    const t=e.changedTouches[0]; lookTouchId=t.identifier; lastLook={x:t.clientX,y:t.clientY};
+  }, {passive:false});
+  lookZoneEl.addEventListener('touchmove', e=>{
+    if (mode!=='walking') return;
+    e.preventDefault();
+    for (const t of e.changedTouches){
+      if (t.identifier===lookTouchId){
+        const dx=t.clientX-lastLook.x, dy=t.clientY-lastLook.y;
+        player.yaw -= dx*0.0045; player.pitch -= dy*0.0045;
+        player.pitch = Math.max(-Math.PI/2+0.05, Math.min(Math.PI/2-0.05, player.pitch));
+        lastLook={x:t.clientX,y:t.clientY};
+      }
+    }
+  }, {passive:false});
+  lookZoneEl.addEventListener('touchend', e=>{ for(const t of e.changedTouches) if(t.identifier===lookTouchId) lookTouchId=null; });
+
   document.getElementById('digBtn').addEventListener('touchstart', e=>{ e.preventDefault(); doDig(); }, {passive:false});
   document.getElementById('placeBtn').addEventListener('touchstart', e=>{ e.preventDefault(); doPlace(); }, {passive:false});
+  let jumpPressed=false;
+  jumpBtnEl.addEventListener('touchstart', e=>{ e.preventDefault(); jumpPressed=true; }, {passive:false});
 
-  // ---------- Password / editor panel ----------
   let currentPassword = "Admin13";
   const gearBtn = document.getElementById('gearBtn');
   const pwModal = document.getElementById('pwModal');
@@ -400,10 +717,7 @@
   const changePwBtn = document.getElementById('changePwBtn');
   const editorMsg = document.getElementById('editorMsg');
 
-  gearBtn.addEventListener('click', ()=>{
-    pwInput.value=''; pwMsg.textContent='';
-    pwModal.classList.add('show');
-  });
+  gearBtn.addEventListener('click', ()=>{ pwInput.value=''; pwMsg.textContent=''; pwModal.classList.add('show'); });
   pwClose.addEventListener('click', ()=> pwModal.classList.remove('show'));
   pwSubmit.addEventListener('click', ()=>{
     if (pwInput.value === currentPassword) {
@@ -412,55 +726,47 @@
       unlimitedToggle.checked = unlimited;
       speedSlider.value = vehicle.maxSpeed;
       editorModal.classList.add('show');
-    } else {
-      pwMsg.textContent = 'رمز اشتباه است';
-    }
+    } else { pwMsg.textContent = 'رمز اشتباه است'; }
   });
   editorClose.addEventListener('click', ()=> editorModal.classList.remove('show'));
   unlimitedToggle.addEventListener('change', ()=>{ unlimited = unlimitedToggle.checked; renderHotbar(); });
   speedSlider.addEventListener('input', ()=>{ vehicle.maxSpeed = parseFloat(speedSlider.value); });
   changePwBtn.addEventListener('click', ()=>{
-    if (oldPwInput.value !== currentPassword) {
-      editorMsg.textContent = 'رمز فعلی اشتباه است'; editorMsg.className='msg err'; return;
-    }
-    if (!newPwInput.value || newPwInput.value.length < 2) {
-      editorMsg.textContent = 'رمز جدید خیلی کوتاه است'; editorMsg.className='msg err'; return;
-    }
+    if (oldPwInput.value !== currentPassword) { editorMsg.textContent='رمز فعلی اشتباه است'; editorMsg.className='msg err'; return; }
+    if (!newPwInput.value || newPwInput.value.length < 2) { editorMsg.textContent='رمز جدید خیلی کوتاه است'; editorMsg.className='msg err'; return; }
     currentPassword = newPwInput.value;
     oldPwInput.value=''; newPwInput.value='';
-    editorMsg.textContent = 'رمز با موفقیت تغییر کرد'; editorMsg.className='msg ok';
+    editorMsg.textContent='رمز با موفقیت تغییر کرد'; editorMsg.className='msg ok';
   });
 
-  // ---------- Camera follow ----------
-  const camOffset = new THREE.Vector3();
-  const camTarget = new THREE.Vector3();
+  function collidesAt(x,y,z){ return !!getBlock(x,y,z); }
+  function tryMoveWalking(dx,dz){
+    const r = player.radius;
+    let nx = player.x + dx;
+    if (!collidesAt(nx+Math.sign(dx)*r, player.y+0.2, player.z) && !collidesAt(nx+Math.sign(dx)*r, player.y+player.height-0.1, player.z)) player.x = nx;
+    let nz = player.z + dz;
+    if (!collidesAt(player.x, player.y+0.2, nz+Math.sign(dz)*r) && !collidesAt(player.x, player.y+player.height-0.1, nz+Math.sign(dz)*r)) player.z = nz;
+  }
 
-  // ---------- Main loop ----------
   const clock = new THREE.Clock();
-  const TURN_RATE = 2.2;
+  const TURN_RATE = 2.2, GRAVITY=22, JUMP_SPEED=8.2, WALK_SPEED=4.4;
 
-  function update(dt){
-    let throttle = 0, steer = 0;
+  function updateVehicle(dt){
+    let throttle=0, steer=0;
     if (!isTouch) {
-      if (keys['KeyW']||keys['ArrowUp']) throttle += 1;
-      if (keys['KeyS']||keys['ArrowDown']) throttle -= 1;
-      if (keys['KeyA']||keys['ArrowLeft']) steer -= 1;
-      if (keys['KeyD']||keys['ArrowRight']) steer += 1;
-    } else {
-      throttle = -joyVec.y;
-      steer = joyVec.x;
-    }
+      if (keys['KeyW']||keys['ArrowUp']) throttle+=1;
+      if (keys['KeyS']||keys['ArrowDown']) throttle-=1;
+      if (keys['KeyA']||keys['ArrowLeft']) steer-=1;
+      if (keys['KeyD']||keys['ArrowRight']) steer+=1;
+    } else { throttle=-joyVec.y; steer=joyVec.x; }
 
-    vehicle.speed += throttle * 6 * dt;
-    vehicle.speed *= 0.94; // friction
+    vehicle.speed += throttle*6*dt;
+    vehicle.speed *= 0.94;
     vehicle.speed = Math.max(-vehicle.maxSpeed*0.5, Math.min(vehicle.maxSpeed, vehicle.speed));
+    if (Math.abs(vehicle.speed) > 0.05) vehicle.heading += steer*TURN_RATE*dt*Math.sign(vehicle.speed);
 
-    if (Math.abs(vehicle.speed) > 0.05) {
-      vehicle.heading += steer * TURN_RATE * dt * Math.sign(vehicle.speed);
-    }
-
-    const nx = vehicle.x + Math.sin(vehicle.heading) * vehicle.speed * dt;
-    const nz = vehicle.z + Math.cos(vehicle.heading) * vehicle.speed * dt;
+    const nx = vehicle.x + Math.sin(vehicle.heading)*vehicle.speed*dt;
+    const nz = vehicle.z + Math.cos(vehicle.heading)*vehicle.speed*dt;
     vehicle.x = Math.max(WORLD_MIN+1, Math.min(WORLD_MAX-1, nx));
     vehicle.z = Math.max(WORLD_MIN+1, Math.min(WORLD_MAX-1, nz));
 
@@ -469,32 +775,62 @@
 
     vehicleGroup.position.set(vehicle.x, vehicle.y, vehicle.z);
     vehicleGroup.rotation.y = vehicle.heading;
+    wheelPositions.forEach((p,i)=>{ vehicleGroup.children[1+i].rotation.x += vehicle.speed*dt*2; });
 
-    // wheel spin
-    wheelPositions.forEach((p,i)=>{
-      vehicleGroup.children[1+i].rotation.x += vehicle.speed*dt*2;
-    });
-
-    // camera third-person follow
-    camOffset.set(Math.sin(vehicle.heading)*-6, 3.6, Math.cos(vehicle.heading)*-6);
+    const camOffset = new THREE.Vector3(Math.sin(vehicle.heading)*-6, 3.6, Math.cos(vehicle.heading)*-6);
     const desiredPos = new THREE.Vector3(vehicle.x,vehicle.y,vehicle.z).add(camOffset);
     camera.position.lerp(desiredPos, Math.min(1, dt*4));
-    camTarget.set(vehicle.x, vehicle.y+0.8, vehicle.z);
-    camera.lookAt(camTarget);
+    camera.lookAt(vehicle.x, vehicle.y+0.8, vehicle.z);
+  }
+
+  function updateWalking(dt){
+    let mx=0, mz=0;
+    if (!isTouch) {
+      if (keys['KeyW']) mz -= 1;
+      if (keys['KeyS']) mz += 1;
+      if (keys['KeyA']) mx -= 1;
+      if (keys['KeyD']) mx += 1;
+    } else { mx=joyVec.x; mz=joyVec.y; }
+    const len = Math.hypot(mx,mz);
+    if (len>1){ mx/=len; mz/=len; }
+
+    const forward = new THREE.Vector3(Math.sin(player.yaw),0,Math.cos(player.yaw));
+    const right = new THREE.Vector3(Math.sin(player.yaw+Math.PI/2),0,Math.cos(player.yaw+Math.PI/2));
+    const move = new THREE.Vector3();
+    move.addScaledVector(forward, -mz);
+    move.addScaledVector(right, mx);
+    if (move.lengthSq()>0) move.normalize();
+    tryMoveWalking(move.x*WALK_SPEED*dt, move.z*WALK_SPEED*dt);
+
+    const wantJump = keys['Space'] || jumpPressed;
+    jumpPressed = false;
+    if (wantJump && player.onGround){ player.vel.y = JUMP_SPEED; player.onGround=false; }
+
+    player.vel.y -= GRAVITY*dt;
+    let ny = player.y + player.vel.y*dt;
+    if (player.vel.y<=0 && collidesAt(player.x, ny, player.z)) { ny = Math.floor(ny)+1; player.vel.y=0; player.onGround=true; }
+    else if (player.vel.y>0 && collidesAt(player.x, ny+player.height, player.z)) { ny = Math.floor(ny+player.height)-player.height-0.01; player.vel.y=0; }
+    else player.onGround=false;
+    player.y = ny;
+
+    if (player.y < -10) { player.x=vehicle.x; player.z=vehicle.z+2; player.y=topY(Math.round(player.x),Math.round(player.z))+2; player.vel.set(0,0,0); }
+
+    camera.position.set(player.x, player.y+player.eye, player.z);
+    camera.rotation.order='YXZ';
+    camera.rotation.y = player.yaw;
+    camera.rotation.x = player.pitch;
   }
 
   function animate(){
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.05);
-    update(dt);
+    if (mode==='vehicle') updateVehicle(dt); else updateWalking(dt);
     renderer.render(scene, camera);
   }
   animate();
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(()=>{});
-    });
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
   }
 })();
 </script>
