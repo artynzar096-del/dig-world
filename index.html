@@ -267,7 +267,12 @@
     { name:'برگ',  key:'leaves',color:0x3e7d32 },
     { name:'آجر',  key:'brick', color:0xb33f24 },
     { name:'شیشه', key:'glass', color:0xbfe3f0 },
+    { name:'اسفنج', key:'sponge', color:0xd8c94a },
   ];
+  const TOOL_TYPES = [
+    { name:'سطل آب', key:'bucket', color:0x6fa8c9, isTool:true },
+  ];
+  const ALL_ITEMS = BLOCK_TYPES.concat(TOOL_TYPES);
 
   function shade(hex, amt){
     let r=(hex>>16)&255, g=(hex>>8)&255, b=hex&255;
@@ -275,7 +280,14 @@
     return `rgb(${r|0},${g|0},${b|0})`;
   }
   function baseCanvas(){ const c=document.createElement('canvas'); c.width=16; c.height=16; return c; }
-  function finish(c){ const tex=new THREE.CanvasTexture(c); tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.NearestFilter; return tex; }
+  function finish(c){
+    const tex=new THREE.CanvasTexture(c);
+    tex.magFilter=THREE.NearestFilter;
+    tex.minFilter=THREE.LinearMipmapLinearFilter;
+    tex.generateMipmaps=true;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+    return tex;
+  }
   function makeSpeckle(hex, speckles=55, variance=20){
     const c=baseCanvas(), ctx=c.getContext('2d');
     ctx.fillStyle=shade(hex,0); ctx.fillRect(0,0,16,16);
@@ -311,6 +323,28 @@
     return finish(c);
   }
 
+  function makeSpongeTexture(hex){
+    const c=baseCanvas(), ctx=c.getContext('2d');
+    ctx.fillStyle=shade(hex,0); ctx.fillRect(0,0,16,16);
+    for(let i=0;i<26;i++){
+      const x=(Math.random()*14)|0, y=(Math.random()*14)|0;
+      ctx.fillStyle=shade(hex,-60);
+      ctx.fillRect(x,y,2,2);
+    }
+    return finish(c);
+  }
+  function makeBucketIcon(){
+    const c=baseCanvas(), ctx=c.getContext('2d');
+    ctx.fillStyle='rgba(0,0,0,0)'; ctx.fillRect(0,0,16,16);
+    ctx.fillStyle='#8a8f94';
+    ctx.beginPath(); ctx.moveTo(3,4); ctx.lineTo(13,4); ctx.lineTo(11,14); ctx.lineTo(5,14); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#3f7fd1';
+    ctx.fillRect(5,5,6,3);
+    ctx.strokeStyle='#5a6066'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(3,4); ctx.quadraticCurveTo(8,0,13,4); ctx.stroke();
+    return finish(c);
+  }
+
   const texGrassTop = makeSpeckle(0x5ea83f,60,26);
   const texGrassSide = makeGrassSide(0x8b5a2b,0x5ea83f);
   const texDirt = makeSpeckle(0x8b5a2b,55,22);
@@ -320,6 +354,8 @@
   const texLeaves = makeSpeckle(0x3e7d32,70,30);
   const texBrick = makeBrickTexture(0xb33f24);
   const texGlass = makeSpeckle(0xbfe3f0,20,10);
+  const texSponge = makeSpongeTexture(0xd8c94a);
+  const texBucketIcon = makeBucketIcon();
   const texBedrockTex = makeSpeckle(0x333333,50,20);
 
   const matGrassTop = new THREE.MeshLambertMaterial({ map:texGrassTop });
@@ -331,6 +367,7 @@
   const matLeaves = new THREE.MeshLambertMaterial({ map:texLeaves });
   const matBrick = new THREE.MeshLambertMaterial({ map:texBrick });
   const matGlass = new THREE.MeshLambertMaterial({ map:texGlass, transparent:true, opacity:0.55 });
+  const matSponge = new THREE.MeshLambertMaterial({ map:texSponge });
   const matWater = new THREE.MeshLambertMaterial({ color:0x3f7fd1, transparent:true, opacity:0.6 });
 
   const blockMatDefs = {
@@ -342,6 +379,7 @@
     leaves: matLeaves,
     brick: matBrick,
     glass: matGlass,
+    sponge: matSponge,
     water: matWater,
   };
   const bedrockMat = new THREE.MeshLambertMaterial({ map:texBedrockTex });
@@ -356,6 +394,8 @@
     leaves: texLeaves.image.toDataURL(),
     brick: texBrick.image.toDataURL(),
     glass: texGlass.image.toDataURL(),
+    sponge: texSponge.image.toDataURL(),
+    bucket: texBucketIcon.image.toDataURL(),
   };
 
   // ---------- Terrain ----------
@@ -553,13 +593,13 @@
 
   let mode = 'vehicle';
 
-  const inventory = { grass:20, dirt:20, stone:20, sand:20, wood:20, leaves:20, brick:20, glass:20 };
+  const inventory = { grass:20, dirt:20, stone:20, sand:20, wood:20, leaves:20, brick:20, glass:20, sponge:10, bucket:1 };
   const HOTBAR_SIZE = 5;
   let hotbarSlots = BLOCK_TYPES.slice(0, HOTBAR_SIZE).map(t => t.key); // block key or null per slot
   let selectedIndex = 0;
   let unlimited = false;
   const hotbarEl = document.getElementById('hotbar');
-  function typeOf(k){ return BLOCK_TYPES.find(t=>t.key===k); }
+  function typeOf(k){ return ALL_ITEMS.find(t=>t.key===k); }
   function renderHotbar(){
     hotbarEl.innerHTML = '';
     for (let i=0;i<HOTBAR_SIZE;i++){
@@ -570,7 +610,7 @@
       if (t) { el.style.backgroundImage = `url(${iconURL[t.key]})`; el.style.backgroundSize='cover'; el.style.imageRendering='pixelated'; }
       else { el.style.background = 'rgba(255,255,255,0.08)'; }
       const span = document.createElement('span');
-      span.textContent = t ? (unlimited ? '∞' : (inventory[t.key]||0)) : '';
+      span.textContent = t ? (t.isTool ? '🔧' : (unlimited ? '∞' : (inventory[t.key]||0))) : '';
       el.appendChild(span);
       el.addEventListener('pointerdown', e=>{ e.stopPropagation(); selectedIndex=i; renderHotbar(); });
       hotbarEl.appendChild(el);
@@ -584,14 +624,14 @@
   const invGrid = document.getElementById('invGrid');
   function renderInvGrid(){
     invGrid.innerHTML = '';
-    BLOCK_TYPES.forEach(t=>{
+    ALL_ITEMS.forEach(t=>{
       const el = document.createElement('div');
       el.className = 'invSlot';
       el.style.backgroundImage = `url(${iconURL[t.key]})`;
       el.style.backgroundSize = 'cover';
       el.style.imageRendering = 'pixelated';
       const span = document.createElement('span');
-      span.textContent = unlimited ? '∞' : (inventory[t.key]||0);
+      span.textContent = t.isTool ? '🔧' : (unlimited ? '∞' : (inventory[t.key]||0));
       el.appendChild(span);
       el.addEventListener('click', ()=>{
         hotbarSlots[selectedIndex] = t.key;
@@ -702,10 +742,38 @@
       if (removeBlock(x,y,z)) { inventory[typeKey]=(inventory[typeKey]||0)+1; renderHotbar(); playDigSound(); }
     }
   }
+  function absorbNearbyWater(cx,cy,cz,r){
+    for (let dx=-r; dx<=r; dx++) for (let dy=-r; dy<=r; dy++) for (let dz=-r; dz<=r; dz++) {
+      const x=cx+dx, y=cy+dy, z=cz+dz;
+      if (blocks.get(key(x,y,z)) === 'water') removeBlock(x,y,z);
+    }
+  }
+  function useBucket(){
+    let bx,by,bz;
+    if (mode === 'vehicle') {
+      const {fx,fz} = frontColumn(1.6);
+      bx=fx; bz=fz; by=topY(fx,fz);
+    } else {
+      const hit = castFromCamera();
+      if (!hit) return;
+      bx=hit.object.userData.x; by=hit.object.userData.y; bz=hit.object.userData.z;
+    }
+    const bk = blocks.get(key(bx,by,bz));
+    if (bk === 'water') {
+      removeBlock(bx,by,bz);
+      playPlaceSound();
+      flashHint('آب با سطل جمع شد 🪣');
+    } else {
+      const ty = by+1;
+      if (!blocks.has(key(bx,ty,bz))) { addBlock(bx,ty,bz,'water'); playPlaceSound(); flashHint('آب ریخته شد 💧'); }
+    }
+  }
+
   function doPlace(){
     const tk = hotbarSlots[selectedIndex];
     if (!tk) return;
     const t = typeOf(tk);
+    if (t.isTool && t.key === 'bucket') { useBucket(); return; }
     if (!unlimited && inventory[t.key] <= 0) return;
     if (mode === 'vehicle') {
       const {fx,fz} = frontColumn(1.6);
@@ -713,6 +781,7 @@
       if (blocks.has(key(fx,y,fz))) return;
       addBlock(fx,y,fz,t.key);
       if (!unlimited) inventory[t.key]--;
+      if (t.key === 'sponge') absorbNearbyWater(fx,y,fz,2);
       renderHotbar(); animateArm(); playPlaceSound();
     } else {
       const hit = castFromCamera();
@@ -726,6 +795,7 @@
       if (getBlock(bx,by,bz)) return;
       addBlock(bx,by,bz,t.key);
       if (!unlimited) inventory[t.key]--;
+      if (t.key === 'sponge') absorbNearbyWater(bx,by,bz,2);
       renderHotbar(); playPlaceSound();
     }
   }
@@ -797,6 +867,7 @@
     hint.textContent = isTouch ? 'جوی‌استیک حرکت | نگاه بکش سمت راست | ⛏️🧱🚪' : 'WASD حرکت | Space حفاری/پرش | F گذاشتن | E سوار/پیاده';
     setTimeout(()=>{ hint.style.opacity='0'; hint.style.transition='opacity 1s'; }, 4500);
     updateModeUI();
+    ensureAudio();
   });
 
   document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === canvas; });
@@ -955,6 +1026,7 @@
     const camOffset = new THREE.Vector3(Math.sin(vehicle.heading)*-6, 3.6, Math.cos(vehicle.heading)*-6);
     const desiredPos = new THREE.Vector3(vehicle.x,vehicle.y,vehicle.z).add(camOffset);
     camera.position.lerp(desiredPos, Math.min(1, dt*4));
+    camera.up.set(0,1,0);
     camera.lookAt(vehicle.x, vehicle.y+0.8, vehicle.z);
   }
 
@@ -991,9 +1063,8 @@
     if (player.y < -10) { player.x=vehicle.x; player.z=vehicle.z+2; player.y=topY(Math.round(player.x),Math.round(player.z))+2; player.vel.set(0,0,0); }
 
     camera.position.set(player.x, player.y+player.eye, player.z);
-    camera.rotation.order='YXZ';
-    camera.rotation.y = player.yaw;
-    camera.rotation.x = player.pitch;
+    camera.up.set(0,1,0);
+    camera.quaternion.setFromEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ'));
   }
 
   function animate(){
