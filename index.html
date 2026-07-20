@@ -95,6 +95,11 @@
     border-radius:50%; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5);
     color:#fff; font-size:19px; display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
+  #skinBtn {
+    position:absolute; top:12px; right:156px; z-index:30; width:40px; height:40px;
+    border-radius:50%; background:rgba(0,0,0,0.4); border:2px solid rgba(255,255,255,0.5);
+    color:#fff; font-size:19px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
   .vehOption {
     border:2px solid rgba(255,255,255,0.3); border-radius:10px; padding:12px;
     display:flex; align-items:center; justify-content:space-between; cursor:pointer; margin-bottom:8px;
@@ -158,6 +163,7 @@
   <div id="gearBtn">⚙️</div>
   <div id="invBtn">🎒</div>
   <div id="vehBtn">🚗</div>
+  <div id="skinBtn">👤</div>
   <div id="enterBtn">🚪 سوار شو (E)</div>
 
   <div id="touchControls">
@@ -193,6 +199,15 @@
       <h2>🚗 اینونتوری ماشین‌ها</h2>
       <div class="invHint">یکی رو انتخاب کن تا ماشین فعلی عوض بشه (باید سوار باشی).</div>
       <div id="vehList"></div>
+    </div>
+  </div>
+
+  <div id="skinModal" class="modal">
+    <div class="modalBox">
+      <div class="closeX" id="skinClose">✕ بستن</div>
+      <h2>👤 اسکین شخصیت</h2>
+      <canvas id="skinCanvas" width="240" height="260" style="width:100%;border-radius:10px;background:#2a2f3a;"></canvas>
+      <div class="invHint">شخصیتت رو از هر زاویه ببین (خودکار می‌چرخه).</div>
     </div>
   </div>
 
@@ -271,6 +286,7 @@
   ];
   const TOOL_TYPES = [
     { name:'سطل آب', key:'bucket', color:0x6fa8c9, isTool:true },
+    { name:'تخم گوسفند', key:'spawn_egg', color:0xf2f2ea, isTool:true },
   ];
   const ALL_ITEMS = BLOCK_TYPES.concat(TOOL_TYPES);
 
@@ -344,6 +360,14 @@
     ctx.beginPath(); ctx.moveTo(3,4); ctx.quadraticCurveTo(8,0,13,4); ctx.stroke();
     return finish(c);
   }
+  function makeEggIcon(){
+    const c=baseCanvas(), ctx=c.getContext('2d');
+    ctx.fillStyle='#f2f2ea';
+    ctx.beginPath(); ctx.ellipse(8,9,4,5.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#3a3a3a';
+    for (let i=0;i<10;i++){ const x=5+(Math.random()*6)|0, y=5+(Math.random()*8)|0; ctx.fillRect(x,y,1,1); }
+    return finish(c);
+  }
 
   const texGrassTop = makeSpeckle(0x5ea83f,60,26);
   const texGrassSide = makeGrassSide(0x8b5a2b,0x5ea83f);
@@ -356,6 +380,7 @@
   const texGlass = makeSpeckle(0xbfe3f0,20,10);
   const texSponge = makeSpongeTexture(0xd8c94a);
   const texBucketIcon = makeBucketIcon();
+  const texEggIcon = makeEggIcon();
   const texBedrockTex = makeSpeckle(0x333333,50,20);
 
   const matGrassTop = new THREE.MeshLambertMaterial({ map:texGrassTop });
@@ -385,6 +410,39 @@
   const bedrockMat = new THREE.MeshLambertMaterial({ map:texBedrockTex });
   const boxGeo = new THREE.BoxGeometry(1,1,1);
 
+  let audioCtx = null;
+  function ensureAudio(){
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function playDigSound(){
+    ensureAudio(); if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type='square';
+    osc.frequency.setValueAtTime(160, t0);
+    osc.frequency.exponentialRampToValueAtTime(50, t0+0.14);
+    gain.gain.setValueAtTime(0.35, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0+0.18);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0+0.18);
+  }
+  function playPlaceSound(){
+    ensureAudio(); if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type='sine';
+    osc.frequency.setValueAtTime(280, t0);
+    osc.frequency.exponentialRampToValueAtTime(480, t0+0.08);
+    gain.gain.setValueAtTime(0.3, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0+0.1);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0+0.1);
+  }
+  ['pointerdown','touchstart','keydown','click'].forEach(evt=>{
+    document.addEventListener(evt, ()=>ensureAudio(), { once:true, passive:true });
+  });
+
   const iconURL = {
     grass: texGrassTop.image.toDataURL(),
     dirt: texDirt.image.toDataURL(),
@@ -396,6 +454,7 @@
     glass: texGlass.image.toDataURL(),
     sponge: texSponge.image.toDataURL(),
     bucket: texBucketIcon.image.toDataURL(),
+    spawn_egg: texEggIcon.image.toDataURL(),
   };
 
   // ---------- Terrain ----------
@@ -411,7 +470,7 @@
     return Math.max(1, Math.min(7, Math.floor(2 + n*6)));
   }
 
-  const WORLD_MIN=-32, WORLD_MAX=31;
+  const WORLD_MIN=-40, WORLD_MAX=39;
   const SEA_LEVEL = 3;
   const blocks = new Map();
   const meshes = new Map();
@@ -463,8 +522,8 @@
         else if (y>=h-1) t='dirt';
         else t='stone';
         if (y>0 && y<h-1) {
-          const cn = smoothNoise(x*0.22+y*11.3, z*0.22+y*5.7);
-          if (cn > 0.72) continue; // carve a cave pocket
+          const cn = smoothNoise(x*0.22+y*11.3, z*0.22+y*5.7)*0.6 + smoothNoise(x*0.42+y*3.1, z*0.42+y*8.7)*0.4;
+          if (cn > 0.58) continue; // carve a cave pocket
         }
         addBlock(x,y,z,t);
       }
@@ -583,8 +642,82 @@
   legL.position.set(-0.12,0.4,0);
   charGroup.add(legL);
   const legR = legL.clone(); legR.position.x = 0.12; charGroup.add(legR);
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.55,0.2), skinMat);
+  armL.position.set(-0.32,1.02,0);
+  charGroup.add(armL);
+  const armR = armL.clone(); armR.position.x = 0.32; charGroup.add(armR);
   charGroup.visible = false;
   scene.add(charGroup);
+
+  // ---------- Mobs (simple wandering sheep) ----------
+  const woolMat = new THREE.MeshLambertMaterial({ color:0xf2f2ea });
+  const mobSkinMat = new THREE.MeshLambertMaterial({ color:0x3a3a3a });
+  const mobs = [];
+  function buildSheepMesh(){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.4,0.9), woolMat);
+    body.position.y = 0.5;
+    g.add(body);
+    const headM = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.3), mobSkinMat);
+    headM.position.set(0,0.55,0.55);
+    g.add(headM);
+    const legPositions = [[-0.2,0.15,0.3],[0.2,0.15,0.3],[-0.2,0.15,-0.3],[0.2,0.15,-0.3]];
+    legPositions.forEach(p=>{
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.3,0.12), mobSkinMat);
+      leg.position.set(p[0],p[1],p[2]);
+      g.add(leg);
+    });
+    return g;
+  }
+  function playMobSound(){
+    ensureAudio(); if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(220, t0);
+    osc.frequency.linearRampToValueAtTime(180, t0+0.1);
+    osc.frequency.linearRampToValueAtTime(260, t0+0.22);
+    gain.gain.setValueAtTime(0.001, t0);
+    gain.gain.linearRampToValueAtTime(0.14, t0+0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0+0.28);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0+0.28);
+  }
+  function spawnMob(x,z){
+    const mesh = buildSheepMesh();
+    const y = topY(Math.round(x),Math.round(z)) + 1;
+    mesh.position.set(x,y,z);
+    scene.add(mesh);
+    mobs.push({ mesh, x, z, y, heading:Math.random()*Math.PI*2, speed:0, changeT:0, soundT:2+Math.random()*4 });
+    playMobSound();
+  }
+  function updateMobs(dt){
+    mobs.forEach(m=>{
+      m.changeT -= dt;
+      if (m.changeT <= 0) {
+        m.changeT = 2 + Math.random()*3;
+        m.heading += (Math.random()-0.5)*2.2;
+        m.speed = Math.random() < 0.3 ? 0 : 0.8;
+      }
+      const nx = m.x + Math.sin(m.heading)*m.speed*dt;
+      const nz = m.z + Math.cos(m.heading)*m.speed*dt;
+      if (nx > WORLD_MIN+1 && nx < WORLD_MAX-1 && nz > WORLD_MIN+1 && nz < WORLD_MAX-1 && isSolid(nx, topY(Math.round(nx),Math.round(nz)), nz)) {
+        m.x = nx; m.z = nz;
+      } else { m.heading += Math.PI*0.5; }
+      const gy = topY(Math.round(m.x),Math.round(m.z)) + 1;
+      m.y += (gy - m.y) * Math.min(1, dt*6);
+      m.mesh.position.set(m.x,m.y,m.z);
+      m.mesh.rotation.y = m.heading;
+      m.soundT -= dt;
+      if (m.soundT <= 0) { m.soundT = 6 + Math.random()*10; playMobSound(); }
+    });
+  }
+  // scatter a few sheep across the world at start
+  for (let i=0;i<8;i++){
+    const sx = WORLD_MIN + Math.random()*(WORLD_MAX-WORLD_MIN);
+    const sz = WORLD_MIN + Math.random()*(WORLD_MAX-WORLD_MIN);
+    if (topY(Math.round(sx),Math.round(sz)) > SEA_LEVEL) spawnMob(sx, sz);
+  }
 
   const vehicle = { x:0, z:0, y:0, heading:0, speed:0, maxSpeed: 4.2 };
   vehicle.y = topY(Math.round(vehicle.x), Math.round(vehicle.z)) + 1;
@@ -593,7 +726,7 @@
 
   let mode = 'vehicle';
 
-  const inventory = { grass:20, dirt:20, stone:20, sand:20, wood:20, leaves:20, brick:20, glass:20, sponge:10, bucket:1 };
+  const inventory = { grass:20, dirt:20, stone:20, sand:20, wood:20, leaves:20, brick:20, glass:20, sponge:10, bucket:1, spawn_egg:5 };
   const HOTBAR_SIZE = 5;
   let hotbarSlots = BLOCK_TYPES.slice(0, HOTBAR_SIZE).map(t => t.key); // block key or null per slot
   let selectedIndex = 0;
@@ -669,6 +802,43 @@
   vehBtn.addEventListener('click', ()=>{ renderVehList(); vehModal.classList.add('show'); });
   vehClose.addEventListener('click', ()=> vehModal.classList.remove('show'));
 
+  // ---------- Skin preview (mini 3D view like Minecraft's inventory character) ----------
+  const skinBtn = document.getElementById('skinBtn');
+  const skinModal = document.getElementById('skinModal');
+  const skinClose = document.getElementById('skinClose');
+  const skinCanvas = document.getElementById('skinCanvas');
+  const skinRenderer = new THREE.WebGLRenderer({ canvas:skinCanvas, alpha:true, antialias:true });
+  skinRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  skinRenderer.setSize(240,260,false);
+  const skinScene = new THREE.Scene();
+  const skinCamera = new THREE.PerspectiveCamera(32, 240/260, 0.1, 10);
+  skinCamera.position.set(0,1.05,3.4);
+  skinScene.add(new THREE.AmbientLight(0xffffff,0.9));
+  const skinLight = new THREE.DirectionalLight(0xffffff,0.7);
+  skinLight.position.set(2,3,3);
+  skinScene.add(skinLight);
+  function buildPreviewChar(){
+    const g = new THREE.Group();
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.4,0.4), skinMat); h.position.y=1.5; g.add(h);
+    const to = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.6,0.25), shirtMat); to.position.y=1.0; g.add(to);
+    const lL = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.6,0.2), pantsMat); lL.position.set(-0.12,0.4,0); g.add(lL);
+    const lR = lL.clone(); lR.position.x=0.12; g.add(lR);
+    const aL = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.55,0.2), skinMat); aL.position.set(-0.32,1.02,0); g.add(aL);
+    const aR = aL.clone(); aR.position.x=0.32; g.add(aR);
+    return g;
+  }
+  const previewChar = buildPreviewChar();
+  previewChar.position.y = -0.85;
+  skinScene.add(previewChar);
+  let skinAnimId = null;
+  function renderSkinLoop(){
+    previewChar.rotation.y += 0.018;
+    skinRenderer.render(skinScene, skinCamera);
+    skinAnimId = requestAnimationFrame(renderSkinLoop);
+  }
+  skinBtn.addEventListener('click', ()=>{ skinModal.classList.add('show'); if (!skinAnimId) renderSkinLoop(); });
+  skinClose.addEventListener('click', ()=>{ skinModal.classList.remove('show'); if (skinAnimId){ cancelAnimationFrame(skinAnimId); skinAnimId=null; } });
+
   const raycaster = new THREE.Raycaster();
   raycaster.far = 6.5;
   function castFromCamera(){
@@ -693,36 +863,6 @@
     const fx = Math.round(vehicle.x + Math.sin(vehicle.heading)*dist);
     const fz = Math.round(vehicle.z + Math.cos(vehicle.heading)*dist);
     return {fx,fz};
-  }
-
-  let audioCtx = null;
-  function ensureAudio(){
-    if (!audioCtx) { try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  }
-  function playDigSound(){
-    ensureAudio(); if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.type='square';
-    osc.frequency.setValueAtTime(140, t0);
-    osc.frequency.exponentialRampToValueAtTime(55, t0+0.12);
-    gain.gain.setValueAtTime(0.22, t0);
-    gain.gain.exponentialRampToValueAtTime(0.001, t0+0.16);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(t0); osc.stop(t0+0.16);
-  }
-  function playPlaceSound(){
-    ensureAudio(); if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.type='sine';
-    osc.frequency.setValueAtTime(280, t0);
-    osc.frequency.exponentialRampToValueAtTime(480, t0+0.08);
-    gain.gain.setValueAtTime(0.18, t0);
-    gain.gain.exponentialRampToValueAtTime(0.001, t0+0.1);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(t0); osc.stop(t0+0.1);
   }
 
   function doDig(){
@@ -769,11 +909,32 @@
     }
   }
 
+  function useSpawnEgg(){
+    let bx,bz;
+    if (mode === 'vehicle') {
+      const {fx,fz} = frontColumn(1.8);
+      bx=fx; bz=fz;
+    } else {
+      const hit = castFromCamera();
+      if (!hit) { bx = Math.round(player.x + Math.sin(player.yaw)*2); bz = Math.round(player.z + Math.cos(player.yaw)*2); }
+      else { bx=hit.object.userData.x; bz=hit.object.userData.z; }
+    }
+    if (mobs.length >= 20) { flashHint('تعداد موجودات به حد نهایی رسیده'); return; }
+    spawnMob(bx+0.5, bz+0.5);
+    if (!unlimited) inventory.spawn_egg = Math.max(0, (inventory.spawn_egg||0)-1);
+    renderHotbar();
+  }
+
   function doPlace(){
     const tk = hotbarSlots[selectedIndex];
     if (!tk) return;
     const t = typeOf(tk);
     if (t.isTool && t.key === 'bucket') { useBucket(); return; }
+    if (t.isTool && t.key === 'spawn_egg') {
+      if (!unlimited && inventory.spawn_egg <= 0) return;
+      useSpawnEgg();
+      return;
+    }
     if (!unlimited && inventory[t.key] <= 0) return;
     if (mode === 'vehicle') {
       const {fx,fz} = frontColumn(1.6);
@@ -1071,6 +1232,7 @@
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.05);
     if (mode==='vehicle') updateVehicle(dt); else updateWalking(dt);
+    updateMobs(dt);
     renderer.render(scene, camera);
   }
   animate();
